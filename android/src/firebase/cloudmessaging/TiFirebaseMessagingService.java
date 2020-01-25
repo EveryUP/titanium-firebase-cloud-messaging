@@ -12,6 +12,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
+
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 import java.io.BufferedInputStream;
@@ -22,6 +23,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import me.leolin.shortcutbadger.ShortcutBadger;
+
 import org.appcelerator.kroll.KrollDict;
 import org.appcelerator.titanium.TiApplication;
 import org.appcelerator.titanium.util.TiConvert;
@@ -207,7 +209,7 @@ public class TiFirebaseMessagingService extends FirebaseMessagingService
 
 		// Icons
 		try {
-			int smallIcon = this.getResource("drawable", "notificationicon");
+			int smallIcon = this.getResource("drawable", "notification_icon");
 			int smallAppIcon = this.getResource("drawable", "appicon");
 			if (smallIcon > 0) {
 				// use custom icon
@@ -276,9 +278,28 @@ public class TiFirebaseMessagingService extends FirebaseMessagingService
 			id = atomic.getAndIncrement();
 		}
 
+		// Actions
+		if (params.get("type") != null && params.get("type").equals("areyoufine")) {
+			Intent actionNeedHelpIntent = new Intent(context, PushActionReceiver.class);
+			Intent actionImFineIntent = new Intent(context, PushActionReceiver.class);
+
+			actionNeedHelpIntent.setAction("NEED_HELP");
+			actionImFineIntent.setAction("IM_FINE");
+
+			PendingIntent needHelpPendingIntent = PendingIntent.getBroadcast(context, 0, actionNeedHelpIntent, 0);
+			PendingIntent imFinePendingIntent = PendingIntent.getBroadcast(context, 0, actionNeedHelpIntent, 0);
+
+			NotificationCompat.Action needHelpAction = new NotificationCompat.Action.Builder(android.R.drawable.stat_sys_warning, "Ho bisogno di aiuto", needHelpPendingIntent).build();
+			NotificationCompat.Action imFineAction = new NotificationCompat.Action.Builder(android.R.drawable.ic_dialog_info, "Sto bene", imFinePendingIntent).build();
+
+			builder.addAction(needHelpAction);
+			builder.addAction(imFineAction);
+		}
+
 		// Send
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		notificationManager.notify(id, builder.build());
+
 		return true;
 	}
 
