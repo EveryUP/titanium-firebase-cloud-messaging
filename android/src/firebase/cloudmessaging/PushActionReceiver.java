@@ -1,5 +1,6 @@
 package firebase.cloudmessaging;
 
+import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -24,5 +25,10 @@ public class PushActionReceiver extends BroadcastReceiver {
 
         Intent closeNotificationIntent = new Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS);
         context.sendBroadcast(closeNotificationIntent);
+
+        if (intent.hasExtra("NOTIFICATION_ID")) {
+            NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            notificationManager.cancel(intent.getIntExtra("NOTIFICATION_ID", -1));
+        }
     }
 }

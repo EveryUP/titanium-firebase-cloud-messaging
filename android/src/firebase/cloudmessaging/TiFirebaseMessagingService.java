@@ -285,9 +285,11 @@ public class TiFirebaseMessagingService extends FirebaseMessagingService
 
 			actionNeedHelpIntent.setAction("NEED_HELP");
 			actionImFineIntent.setAction("IM_FINE");
+			actionNeedHelpIntent.putExtra("NOTIFICATION_ID", id);
+			actionImFineIntent.putExtra("NOTIFICATION_ID", id);
 
 			PendingIntent needHelpPendingIntent = PendingIntent.getBroadcast(context, 0, actionNeedHelpIntent, 0);
-			PendingIntent imFinePendingIntent = PendingIntent.getBroadcast(context, 0, actionNeedHelpIntent, 0);
+			PendingIntent imFinePendingIntent = PendingIntent.getBroadcast(context, 0, actionImFineIntent, 0);
 
 			NotificationCompat.Action needHelpAction = new NotificationCompat.Action.Builder(android.R.drawable.stat_sys_warning, "Ho bisogno di aiuto", needHelpPendingIntent).build();
 			NotificationCompat.Action imFineAction = new NotificationCompat.Action.Builder(android.R.drawable.ic_dialog_info, "Sto bene", imFinePendingIntent).build();
