@@ -28,6 +28,8 @@ import org.appcelerator.kroll.KrollDict;
 import org.appcelerator.titanium.TiApplication;
 import org.appcelerator.titanium.util.TiConvert;
 import org.appcelerator.titanium.util.TiRHelper;
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 public class TiFirebaseMessagingService extends FirebaseMessagingService
@@ -278,24 +280,33 @@ public class TiFirebaseMessagingService extends FirebaseMessagingService
 			id = atomic.getAndIncrement();
 		}
 
-		// Actions
-		if (params.get("type") != null && params.get("type").equals("areyoufine")) {
-			Intent actionNeedHelpIntent = new Intent(context, PushActionReceiver.class);
-			Intent actionImFineIntent = new Intent(context, PushActionReceiver.class);
+		// Handling actions
+		if (params.get("actions") != null) {
+			try {
+				JSONArray actions = new JSONArray(jsonData.getString("actions"));
 
-			actionNeedHelpIntent.setAction("NEED_HELP");
-			actionImFineIntent.setAction("IM_FINE");
-			actionNeedHelpIntent.putExtra("NOTIFICATION_ID", id);
-			actionImFineIntent.putExtra("NOTIFICATION_ID", id);
+				for (int i = 0; i < actions.length(); i++) {
+					JSONObject descriptor = actions.getJSONObject(i);
 
-			PendingIntent needHelpPendingIntent = PendingIntent.getBroadcast(context, 0, actionNeedHelpIntent, 0);
-			PendingIntent imFinePendingIntent = PendingIntent.getBroadcast(context, 0, actionImFineIntent, 0);
+					if (descriptor.isNull("title") || descriptor.isNull("action")) {
+						Log.w(TAG, "Missing 'title' or 'action' properties inside actions item at index " + i);
+					} else {
+						Intent actionIntent = new Intent(context, PushActionReceiver.class);
+						actionIntent.setAction(descriptor.getString("action"));
 
-			NotificationCompat.Action needHelpAction = new NotificationCompat.Action.Builder(android.R.drawable.stat_sys_warning, "Ho bisogno di aiuto", needHelpPendingIntent).build();
-			NotificationCompat.Action imFineAction = new NotificationCompat.Action.Builder(android.R.drawable.ic_dialog_info, "Sto bene", imFinePendingIntent).build();
+						if (TiConvert.toBoolean(descriptor.getBoolean("clear"), false)) {
+							actionIntent.putExtra("notification_id", id);
+						}
 
-			builder.addAction(needHelpAction);
-			builder.addAction(imFineAction);
+						PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, actionIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+						NotificationCompat.Action action = new NotificationCompat.Action.Builder(0, descriptor.getString("title"), pendingIntent).build();
+
+						builder.addAction(action);
+					}
+				}
+			} catch (JSONException exception) {
+				Log.e(TAG, exception.getMessage());
+			}
 		}
 
 		// Send

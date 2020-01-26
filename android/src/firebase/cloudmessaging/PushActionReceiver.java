@@ -49,6 +49,8 @@ public class PushActionReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
+        int id = intent.getIntExtra("notification_id", -1);
+
         JSONObject body = new JSONObject();
 
         if (this.requestQueue == null) {
@@ -57,26 +59,20 @@ public class PushActionReceiver extends BroadcastReceiver {
 
         if (action.equals("IM_FINE")) {
             Log.d(LCAT, "Handling im fine");
-
-            this.postRequest("https://google.it", body);
         } else if (action.equals("NEED_HELP")) {
             Log.d(LCAT, "Handling need help");
-
-            this.postRequest("https://google.it", body);
         } else if (action.equals("GEO_CLAIM")) {
             Log.d(LCAT, "Handling geo claim");
-
-            this.postRequest("https://google.it", body);
         } else {
             Log.d(LCAT, "Unknown action to do.");
         }
 
         Intent closeNotificationIntent = new Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS);
         context.sendBroadcast(closeNotificationIntent);
-
-        if (intent.hasExtra("NOTIFICATION_ID")) {
+        
+        if (id > -1) {
             NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-            notificationManager.cancel(intent.getIntExtra("NOTIFICATION_ID", -1));
+            notificationManager.cancel(id);
         }
     }
 
@@ -114,7 +110,7 @@ public class PushActionReceiver extends BroadcastReceiver {
                     return body == null ? null : body.toString().getBytes("utf-8");
                 } catch (UnsupportedEncodingException exception) {
                     VolleyLog.wtf("Unsupported Encoding while trying to get the bytes of %s using %s", body.toString(), "utf-8");
-                    
+
                     return null;
                 }
             }
