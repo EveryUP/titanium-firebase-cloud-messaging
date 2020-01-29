@@ -13,6 +13,12 @@ import android.graphics.RectF;
 import android.net.Uri;
 import org.appcelerator.titanium.TiApplication;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
+
 public final class Utils
 {
 
@@ -51,6 +57,13 @@ public final class Utils
 	public static Context getApplicationContext()
 	{
 		return TiApplication.getInstance().getApplicationContext();
+	}
+
+	public static String getCurrentTimeAsISOString() {
+		DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.ITALY);
+		dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+		return dateFormat.format(new Date());
 	}
 
 	/**

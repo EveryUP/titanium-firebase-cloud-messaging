@@ -7,6 +7,7 @@
 			<uses-permission android:name="android.permission.VIBRATE"/>
 			<application>
 				<receiver android:name="firebase.cloudmessaging.PushActionReceiver" />
+				<receiver android:name="firebase.cloudmessaging.PushReceiver" />
 				<service android:name="firebase.cloudmessaging.TiFirebaseMessagingService" >
 					<intent-filter>
 						<action android:name="com.google.firebase.MESSAGING_EVENT"/>

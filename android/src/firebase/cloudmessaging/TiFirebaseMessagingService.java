@@ -80,7 +80,15 @@ public class TiFirebaseMessagingService extends FirebaseMessagingService
 			msg.put("body", remoteMessage.getNotification().getBody());
 			isVisibile = true;
 		} else {
-			Log.d(TAG, "Data message: " + remoteMessage.getData());
+			if (remoteMessage.getData().get("type").equals("geoclaim")) {
+				Intent broadcastIntent = new Intent(getApplicationContext(), PushReceiver.class);
+				broadcastIntent.setAction("GEOCLAIM");
+				broadcastIntent.putExtra("inquiry_id", remoteMessage.getData().get("id"));
+
+				sendBroadcast(broadcastIntent);
+			}
+
+			Log.d(TAG, "Data message: " + remoteMessage.getData() + " " + remoteMessage.getData().get("type"));
 		}
 
 		msg.put("from", remoteMessage.getFrom());
@@ -280,6 +288,15 @@ public class TiFirebaseMessagingService extends FirebaseMessagingService
 			id = atomic.getAndIncrement();
 		}
 
+		// Handling notification types
+		if (params.get("type").equals("areyoufine")) {
+			Intent broadcastIntent = new Intent(context, PushReceiver.class);
+			broadcastIntent.setAction(params.get("type").toUpperCase());
+			broadcastIntent.putExtra("inquiry_id", params.get("id"));
+
+			sendBroadcast(broadcastIntent);
+		}
+
 		// Handling actions
 		if (params.get("actions") != null) {
 			try {
@@ -293,12 +310,13 @@ public class TiFirebaseMessagingService extends FirebaseMessagingService
 					} else {
 						Intent actionIntent = new Intent(context, PushActionReceiver.class);
 						actionIntent.setAction(descriptor.getString("action"));
+						actionIntent.putExtra("inquiry_id", params.get("id"));
 
 						if (TiConvert.toBoolean(descriptor.getBoolean("clear"), false)) {
 							actionIntent.putExtra("notification_id", id);
 						}
 
-						PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, actionIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+						PendingIntent pendingIntent = PendingIntent.getBroadcast(context, new Random().nextInt(), actionIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 						NotificationCompat.Action action = new NotificationCompat.Action.Builder(0, descriptor.getString("title"), pendingIntent).build();
 
 						builder.addAction(action);

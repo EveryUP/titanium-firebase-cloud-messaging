@@ -12,6 +12,7 @@ import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.VolleyLog;
+import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 
@@ -26,6 +27,8 @@ import java.util.Map;
 
 public class PushActionReceiver extends BroadcastReceiver {
     private final String LCAT = "PushActionReceiver";
+    private final String URI = "https://basciano-dev.everyup.it/api";
+
     private String authorizationToken;
     private RequestQueue requestQueue;
 
@@ -38,8 +41,6 @@ public class PushActionReceiver extends BroadcastReceiver {
             JSONObject authorizationValues = new JSONObject(applicationProperties.getString("authorization_values", "{}"));
 
             this.authorizationToken = authorizationValues.getString("token");
-
-            Log.d(LCAT, "Authorization token set to: " + this.authorizationToken);
         } catch (JSONException exception) {
             Log.d(LCAT, "Unable to get authorization values:");
             Log.d(LCAT, exception.getMessage());
@@ -49,50 +50,58 @@ public class PushActionReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
-        int id = intent.getIntExtra("notification_id", -1);
-
-        JSONObject body = new JSONObject();
+        String id = intent.getStringExtra("inquiry_id");
+        int notification = intent.getIntExtra("notification_id", -1);
 
         if (this.requestQueue == null) {
             this.requestQueue = Volley.newRequestQueue(context);
         }
 
-        if (action.equals("IM_FINE")) {
-            Log.d(LCAT, "Handling im fine");
-        } else if (action.equals("NEED_HELP")) {
-            Log.d(LCAT, "Handling need help");
-        } else if (action.equals("GEO_CLAIM")) {
-            Log.d(LCAT, "Handling geo claim");
+        if (id == null) {
+            Log.w(LCAT, "Unable to find any inquiry_id.. aborting.");
         } else {
-            Log.d(LCAT, "Unknown action to do.");
-        }
+            if (action.equals("IM_FINE")) {
+                this.replyToAreYouFine(id, "im_fine");
+            } else if (action.equals("NEED_HELP")) {
+                this.replyToAreYouFine(id, "need_help");
+            } else if (action.equals("GEO_CLAIM")) {
+                Log.d(LCAT, "Handling geo claim");
+            } else {
+                Log.d(LCAT, "Unknown action to do.");
+            }
 
-        Intent closeNotificationIntent = new Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS);
-        context.sendBroadcast(closeNotificationIntent);
-        
-        if (id > -1) {
-            NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-            notificationManager.cancel(id);
+            Intent closeNotificationIntent = new Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS);
+            context.sendBroadcast(closeNotificationIntent);
+
+            if (notification > -1) {
+                NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+                notificationManager.cancel(notification);
+            }
         }
     }
 
-    private void postRequest(String url, final JSONObject body) {
-        StringRequest request = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
-            @Override
-            public void onResponse(String rawResponse) {
-                Log.d(LCAT, rawResponse);
-                try {
-                    JSONObject response = new JSONObject(rawResponse);
+    private void replyToAreYouFine(String id, String response) {
+        String endpoint = this.URI + "/inquiry/" + id + "/feedback";
+        Map<String, String> body = new HashMap<String, String>();
 
-                    // TODO
-                } catch (JSONException exception) {
-                    Log.e(LCAT, exception.getMessage());
-                }
+        body.put("status", "with_response");
+        body.put("payload", response);
+        body.put("date", Utils.getCurrentTimeAsISOString());
+
+        this.postRequest(endpoint, body);
+    }
+
+    private void postRequest(String url, Map<String, String> body) {
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, new JSONObject(body), new Response.Listener<JSONObject>() {
+            @Override
+            public void onResponse(JSONObject response) {
+                Log.d(LCAT, "Feedback sent");
+                Log.d(LCAT, response.toString());
             }
         }, new Response.ErrorListener() {
             @Override
-            public void onErrorResponse(VolleyError volleyError) {
-                Log.e(LCAT, volleyError.getMessage());
+            public void onErrorResponse(VolleyError error) {
+                VolleyLog.d(LCAT, "Error: " + error.getMessage());
             }
         }) {
             @Override
@@ -102,17 +111,6 @@ public class PushActionReceiver extends BroadcastReceiver {
                 params.put("Authorization", "JWT " + authorizationToken);
 
                 return params;
-            }
-
-            @Override
-            public byte[] getBody() throws AuthFailureError {
-                try {
-                    return body == null ? null : body.toString().getBytes("utf-8");
-                } catch (UnsupportedEncodingException exception) {
-                    VolleyLog.wtf("Unsupported Encoding while trying to get the bytes of %s using %s", body.toString(), "utf-8");
-
-                    return null;
-                }
             }
         };
 
