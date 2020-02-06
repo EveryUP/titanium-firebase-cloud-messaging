@@ -20,6 +20,9 @@ import com.android.volley.VolleyLog;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -39,6 +42,8 @@ public class PushReceiver extends BroadcastReceiver {
     private String authorizationToken;
     private RequestQueue requestQueue;
     private FusedLocationProviderClient fusedLocationProvider;
+    private LocationRequest locationRequest;
+    private LocationCallback locationCallback;
 
     public PushReceiver() {
         super();
@@ -56,7 +61,7 @@ public class PushReceiver extends BroadcastReceiver {
     }
 
     @Override
-    public void onReceive(Context context, Intent intent) {
+    public void onReceive(final Context context, Intent intent) {
         final String action = intent.getAction();
         final String id = intent.getStringExtra("inquiry_id");
         final Map<String, Object> body = new HashMap<String, Object>();
@@ -69,6 +74,28 @@ public class PushReceiver extends BroadcastReceiver {
 
         if (this.fusedLocationProvider == null) {
             this.fusedLocationProvider = LocationServices.getFusedLocationProviderClient(context);
+            this.locationRequest = LocationRequest.create()
+                    .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
+                    .setInterval(10 * 1000)
+                    .setFastestInterval(1 * 1000);
+
+            this.locationCallback = new LocationCallback() {
+                @Override
+                public void onLocationResult(LocationResult locationResult) {
+                    if (locationResult == null) {
+                        Log.d(LCAT, "Unable to get a valid location, aborting.");
+
+                        return;
+                    }
+                    for (Location location : locationResult.getLocations()) {
+                        if (location != null) {
+                            forwardGeoClaimFeedback(id, body, location.getLatitude(), location.getLongitude());
+                        }
+                    }
+
+                    fusedLocationProvider.removeLocationUpdates(locationCallback);
+                }
+            };
         }
 
         if (id == null) {
@@ -88,16 +115,10 @@ public class PushReceiver extends BroadcastReceiver {
                                 public void onComplete(@NonNull Task<Location> task) {
                                     Location location = task.getResult();
                                     if (location == null) {
-                                        Log.d(LCAT, "Unable to get a valid location, aborting.");
+                                        Log.d(LCAT, "Unable to get a valid location, requesting new one.");
+                                        fusedLocationProvider.requestLocationUpdates(locationRequest, locationCallback, null);
                                     } else {
-                                        Map<String, Double> payload = new HashMap<String, Double>();
-
-                                        payload.put("latitude", location.getLatitude());
-                                        payload.put("longitude", location.getLongitude());
-
-                                        body.put("payload", payload);
-
-                                        forwardGeoClaimFeedback(id, body);
+                                        forwardGeoClaimFeedback(id, body, location.getLatitude(), location.getLongitude());
                                     }
                                 }
                             }
@@ -115,7 +136,14 @@ public class PushReceiver extends BroadcastReceiver {
         this.postRequest(endpoint, body);
     }
 
-    private void forwardGeoClaimFeedback(String id, Map<String, Object> body) {
+    private void forwardGeoClaimFeedback(String id, Map<String, Object> body, Double latitude, Double longitude) {
+        Map<String, Double> payload = new HashMap<String, Double>();
+
+        payload.put("latitude", latitude);
+        payload.put("longitude", longitude);
+
+        body.put("payload", payload);
+
         String endpoint = this.URI + "/inquiry/" + id + "/feedback";
 
         this.postRequest(endpoint, body);
