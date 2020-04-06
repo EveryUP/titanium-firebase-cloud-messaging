@@ -34,7 +34,6 @@ import org.json.JSONObject;
 
 public class TiFirebaseMessagingService extends FirebaseMessagingService
 {
-
 	private static final String TAG = "FirebaseMsgService";
 	private static final AtomicInteger atomic = new AtomicInteger(0);
 
@@ -85,7 +84,7 @@ public class TiFirebaseMessagingService extends FirebaseMessagingService
 				broadcastIntent.setAction("GEOCLAIM");
 				broadcastIntent.putExtra("inquiry_id", remoteMessage.getData().get("id"));
 
-				sendBroadcast(broadcastIntent);
+				getApplicationContext().sendBroadcast(broadcastIntent);
 			}
 
 			Log.d(TAG, "Data message: " + remoteMessage.getData() + " " + remoteMessage.getData().get("type"));
@@ -168,16 +167,15 @@ public class TiFirebaseMessagingService extends FirebaseMessagingService
 			i.addCategory(Intent.CATEGORY_LAUNCHER);
 			i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
 			i.putExtra("fcm_data", jsonData.toString());
-			sendBroadcast(i);
+			getApplicationContext().sendBroadcast(i);
 			return false;
 		}
 
-		Intent notificationIntent = new Intent(this, PushHandlerActivity.class);
+		Intent notificationIntent = new Intent(context, PushHandlerActivity.class);
 		notificationIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
 		notificationIntent.putExtra("fcm_data", jsonData.toString());
 
-		PendingIntent contentIntent =
-			PendingIntent.getActivity(this, new Random().nextInt(), notificationIntent, PendingIntent.FLAG_ONE_SHOT);
+		PendingIntent contentIntent = PendingIntent.getActivity(context, new Random().nextInt(), notificationIntent, PendingIntent.FLAG_ONE_SHOT);
 
 		// Start building notification
 
@@ -294,7 +292,7 @@ public class TiFirebaseMessagingService extends FirebaseMessagingService
 			broadcastIntent.setAction(params.get("type").toUpperCase());
 			broadcastIntent.putExtra("inquiry_id", params.get("id"));
 
-			sendBroadcast(broadcastIntent);
+			context.sendBroadcast(broadcastIntent);
 		}
 
 		// Handling actions
@@ -328,7 +326,7 @@ public class TiFirebaseMessagingService extends FirebaseMessagingService
 		}
 
 		// Send
-		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		NotificationManager notificationManager = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
 		notificationManager.notify(id, builder.build());
 
 		return true;
